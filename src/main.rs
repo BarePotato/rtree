@@ -1,6 +1,7 @@
 use std::{
     env, fs,
     io::{self, stdout, StdoutLock, Write},
+    path::PathBuf,
 };
 
 struct Counts {
@@ -9,17 +10,22 @@ struct Counts {
 }
 
 fn walk(out: &mut StdoutLock, dir: &str, prefix: &str, counts: &mut Counts) -> io::Result<()> {
-    let mut paths: Vec<_> = fs::read_dir(dir)?.map(|entry| entry.unwrap().path()).collect();
+    let mut paths = fs::read_dir(dir)?.filter_map(|e| e.ok()).map(|e| e.path()).collect::<Vec<PathBuf>>();
     let mut index = paths.len();
 
     paths.sort_by(|a, b| {
-        let aname = a.file_name().unwrap().to_str().unwrap();
-        let bname = b.file_name().unwrap().to_str().unwrap();
-        aname.cmp(bname)
+        let aname = a.file_name();
+        let bname = b.file_name();
+        aname.cmp(&bname)
     });
 
     for path in paths {
-        let name = path.file_name().unwrap().to_str().unwrap();
+        let name = if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+            name
+        } else {
+            continue;
+        };
+
         index -= 1;
 
         if name.starts_with(".") {
