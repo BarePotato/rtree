@@ -3,7 +3,7 @@
 use std::{
     env,
     ffi::OsStr,
-    fs,
+    fs::{self},
     io::{self, stdout, BufWriter, StdoutLock, Write},
 };
 
