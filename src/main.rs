@@ -3,7 +3,6 @@ use std::{
     ffi::OsStr,
     fs,
     io::{self, stdout, StdoutLock, Write},
-    path::PathBuf,
 };
 
 struct Counts {
@@ -12,43 +11,37 @@ struct Counts {
 }
 
 fn walk(out: &mut StdoutLock, dir: &str, prefix: &str, counts: &mut Counts) -> io::Result<()> {
-    let mut paths = fs::read_dir(dir)?.filter_map(Result::ok).map(|e| e.path()).collect::<Vec<PathBuf>>();
+    // let mut paths = fs::read_dir(dir)?.filter_map(Result::ok).map(|e| e.path()).collect::<Vec<PathBuf>>();
+    let mut paths = fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .filter_map(|e| e.path().file_name().and_then(OsStr::to_str).map(|s| (s.to_string(), e.path().is_dir())))
+        .collect::<Vec<(String, bool)>>();
     let mut index = paths.len();
 
-    paths.sort_by(|a, b| {
-        let a_name = a.file_name();
-        let b_name = b.file_name();
-        a_name.cmp(&b_name)
-    });
+    paths.sort_by(|a, b| a.0.cmp(&b.0));
 
-    for path in paths {
-        let name = if let Some(name) = path.file_name().and_then(OsStr::to_str) {
-            name
-        } else {
-            continue;
-        };
-
+    for (file_name, is_dir) in paths {
         index -= 1;
 
-        if name.starts_with('.') {
+        if file_name.starts_with('.') {
             continue;
         }
 
-        if path.is_dir() {
+        if is_dir {
             counts.dirs += 1;
         } else {
             counts.files += 1;
         }
 
         if index == 0 {
-            let _w = writeln!(out, "{}\u{2514}\u{2500}\u{2500} {}", prefix, name);
-            if path.is_dir() {
-                walk(out, &format!("{}/{}", dir, name), &format!("{}    ", prefix), counts)?;
+            let _w = writeln!(out, "{}\u{2514}\u{2500}\u{2500} {}", prefix, file_name);
+            if is_dir {
+                walk(out, &format!("{}/{}", dir, file_name), &format!("{}    ", prefix), counts)?;
             }
         } else {
-            let _w = writeln!(out, "{}\u{251c}\u{2500}\u{2500} {}", prefix, name);
-            if path.is_dir() {
-                walk(out, &format!("{}/{}", dir, name), &format!("{}\u{2502}   ", prefix), counts)?;
+            let _w = writeln!(out, "{}\u{251c}\u{2500}\u{2500} {}", prefix, file_name);
+            if is_dir {
+                walk(out, &format!("{}/{}", dir, file_name), &format!("{}\u{2502}   ", prefix), counts)?;
             }
         }
     }
