@@ -1,3 +1,5 @@
+#![feature(is_symlink)]
+
 use std::{
     env,
     ffi::OsStr,
@@ -14,6 +16,7 @@ struct Counts {
 fn walk(out: &mut BufWriter<StdoutLock>, dir: &str, prefix: &str, counts: &mut Counts) -> io::Result<()> {
     let mut paths = fs::read_dir(dir)?
         .filter_map(Result::ok)
+        .filter(|p| !p.path().is_symlink())
         .filter_map(|e| e.path().file_name().and_then(OsStr::to_str).map(|s| (s.to_string(), e.path().is_dir())))
         .collect::<Vec<(String, bool)>>();
     let mut index = paths.len();
